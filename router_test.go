@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
+*/
 /*
 func TestDeleteEvent(t *testing.T) {
 	tests := []struct {
@@ -54,7 +55,7 @@ func TestDeleteEvent(t *testing.T) {
 
 }
 */
-
+/*
 func TestGetEvents(t *testing.T) {
 
 	t.Run("Get user events by valid data", func(t *testing.T) {
@@ -121,3 +122,4 @@ func TestGetEvents(t *testing.T) {
 	// 	assert.Equal(t, 401, response.Result().StatusCode)
 	// })
 }
+*/

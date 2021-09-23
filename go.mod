@@ -8,10 +8,19 @@ require (
 	github.com/rs/zerolog v1.25.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	restapi/pkg/controller v0.0.0-00010101000000-000000000000 // indirect
 	restapi/pkg/hashing v0.0.0-00010101000000-000000000000 // indirect
 	restapi/pkg/jwt v0.0.0-00010101000000-000000000000 // indirect
+	restapi/pkg/model v0.0.0-00010101000000-000000000000 // indirect
+	restapi/pkg/router v0.0.0-00010101000000-000000000000 // indirect
 )
 
 replace restapi/pkg/hashing => ./pkg/hashing
 
 replace restapi/pkg/jwt => ./pkg/jwt
+
+replace restapi/pkg/router => ./pkg/router
+
+replace restapi/pkg/controller => ./pkg/controller
+
+replace restapi/pkg/model => ./pkg/model
