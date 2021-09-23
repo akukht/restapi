@@ -9,14 +9,20 @@ import (
 
 func router() {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/events/filter", filterEvents).Methods("GET")
-	r.HandleFunc("/api/events/filter/week", weekFilterEvents).Methods("GET")
-	r.HandleFunc("/api/events/filter/between", betweenFilterEvents).Methods("GET")
-	r.HandleFunc("/api/events", getEvents).Methods("GET")
-	r.HandleFunc("/api/events/{id}", getEvent).Methods("GET")
-	r.HandleFunc("/api/events", createEvent).Methods("POST")
-	r.HandleFunc("/api/events/{id}", updateEvent).Methods("PUT")
-	r.HandleFunc("/api/events/{id}", deleteEvent).Methods("DELETE")
+	r.Handle("/api/events/filter", isAuthorized(filterEvents)).Methods("GET")
+	r.Handle("/api/events/filter/week", isAuthorized(weekFilterEvents)).Methods("GET")
+	r.Handle("/api/events/filter/between", isAuthorized(betweenFilterEvents)).Methods("GET")
+	r.Handle("/api/events", isAuthorized(GetEvents)).Methods("GET")
+	r.Handle("/api/events/{id}", isAuthorized(GetEvent)).Methods("GET")
+	r.Handle("/api/events", isAuthorized(createEvent)).Methods("POST")
+	r.Handle("/api/events/{id}", isAuthorized(updateEvent)).Methods("PUT")
+	r.Handle("/api/events/{id}", isAuthorized(DeleteEvent)).Methods("DELETE")
+
+	r.Handle("/api/users", isAuthorized(UpdateUser)).Methods("PUT")
+
+	r.HandleFunc("/api/login", login).Methods("POST")
+	r.Handle("/api/logout", isAuthorized(logout)).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
+
 }

@@ -7,8 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
+	. "restapi/pkg/jwt"
+
 	"github.com/gorilla/mux"
 )
+
+var mySigningKey = []byte("secret")
 
 func betweenFilterEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -62,18 +68,17 @@ func filterEvents(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(event)
 }
 
-func deleteEvent(w http.ResponseWriter, r *http.Request) {
+func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id := mux.Vars(r)
 
 	if _, ok := EventsData[id["id"]]; ok {
 		delete(EventsData, id["id"])
+		json.NewEncoder(w).Encode(ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
 	} else {
-		err := responseCode{StatusCode: 404, Message: "Event not found"}
-		json.NewEncoder(w).Encode(err)
+		json.NewEncoder(w).Encode(ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 
-	json.NewEncoder(w).Encode(EventsData)
 }
 
 func updateEvent(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +90,7 @@ func updateEvent(w http.ResponseWriter, r *http.Request) {
 	if _, ok := EventsData[id["id"]]; ok {
 		EventsData[id["id"]] = event
 	} else {
-		err := responseCode{StatusCode: 404, Message: "Event not found"}
+		err := ResponseCode{StatusCode: 404, Message: EventMessage404}
 		json.NewEncoder(w).Encode(err)
 	}
 	json.NewEncoder(w).Encode(EventsData)
@@ -95,22 +100,112 @@ func createEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var createEvent Events
 	_ = json.NewDecoder(r.Body).Decode(&createEvent)
+
 	EventsData[strconv.Itoa(rand.Intn(1000000))] = createEvent
 	json.NewEncoder(w).Encode(EventsData)
 }
 
-func getEvent(w http.ResponseWriter, r *http.Request) {
+func GetEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id := mux.Vars(r)
+
+	token, err := GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		//fmt.Fprintf(w, err.Error())
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
+	userID, err := GetUserIDbyToken(token.Raw)
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetUserIDbyToken action in GetEvent() function")
+	}
+
 	if _, ok := EventsData[id["id"]]; ok {
-		json.NewEncoder(w).Encode(EventsData[id["id"]])
+		userEvent := GetUserEvent(userID, id["id"], EventsData)
+		json.NewEncoder(w).Encode(TimeZoneConverter(userID, UsersList[userID].TimeZone, userEvent))
 	} else {
-		err := responseCode{StatusCode: 404, Message: "Event not found"}
-		json.NewEncoder(w).Encode(err)
+		json.NewEncoder(w).Encode(ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
 
-func getEvents(w http.ResponseWriter, r *http.Request) {
+func GetEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(EventsData)
+	if r.Header["Token"] != nil {
+		token, err := GetGWTToken(r.Header["Token"][0])
+
+		if err != nil {
+			//log.Fatal(w, err.Error())
+			log.Warn().Err(err).Msg("Get events request, GetGWTToken action in GetEvents() function")
+		}
+
+		userID, err := GetUserIDbyToken(token.Raw)
+
+		if err != nil {
+			//log.Fatal(w, err.Error())
+			log.Warn().Err(err).Msg("Get events request, GetUserIDbyToken action in GetEvents() function")
+		}
+
+		userEvent, err := GetUserEvents(userID, EventsData)
+
+		if err != nil {
+			log.Warn().Err(err).Msg("Get events request, GetUserEvents action in GetEvents() function")
+		}
+
+		if len(userEvent) != 0 {
+			w.WriteHeader(200)
+			json.NewEncoder(w).Encode(TimeZoneConverter(userID, UsersList[userID].TimeZone, userEvent))
+		} else {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(ResponseCode{StatusCode: 404, Message: EventMessage404})
+		}
+	} else {
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(ResponseCode{StatusCode: 404, Message: EventMessage401})
+	}
+}
+
+func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Header["Token"] != nil {
+			token, err := GetGWTToken(r.Header["Token"][0])
+
+			if err != nil {
+				w.WriteHeader(401)
+				json.NewEncoder(w).Encode(ResponseCode{StatusCode: 401, Message: OldToken})
+			}
+			if token.Valid {
+				endpoint(w, r)
+			}
+		} else {
+			w.WriteHeader(401)
+			json.NewEncoder(w).Encode(ResponseCode{StatusCode: 401, Message: NeenAuth401})
+		}
+	})
+}
+
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token, err := GetGWTToken(r.Header["Token"][0])
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Update user request, GetGWTToken action in UpdateUser() function")
+	}
+
+	id, err := GetUserIDbyToken(token.Raw)
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Update user request, GetUserIDbyToken action in UpdateUser() function")
+	}
+	var user Users
+	_ = json.NewDecoder(r.Body).Decode(&user)
+
+	UsersList[id] = Users{
+		Login:    UsersList[id].Login,
+		Password: UsersList[id].Password,
+		TimeZone: user.TimeZone,
+		Token:    UsersList[id].Token,
+	}
+
+	json.NewEncoder(w).Encode(UsersList[id])
 }
