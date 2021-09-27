@@ -1,14 +1,17 @@
 package router
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"restapi/pkg/controller"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
-func Router() {
+func Router(ctx context.Context) (err error) {
+
 	// Initialization mux router
 	r := mux.NewRouter()
 
@@ -29,6 +32,42 @@ func Router() {
 	r.HandleFunc("/api/login", controller.Login).Methods("POST")
 	r.Handle("/api/logout", controller.IsAuthorized(controller.Logout)).Methods("POST")
 
+	//--------
+	srv := &http.Server{
+		Addr:    ":8000",
+		Handler: r,
+	}
+
+	go func() {
+		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen:%+s\n", err)
+		}
+	}()
+
+	log.Printf("server started")
+	<-ctx.Done()
+
+	log.Printf("server stopped")
+
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	if err = srv.Shutdown(ctxShutDown); err != nil {
+		log.Fatalf("server Shutdown Failed:%+s", err)
+	}
+
+	log.Printf("server exited properly")
+
+	if err == http.ErrServerClosed {
+		err = nil
+	}
+
+	return
+
+	//---------
 	//Port listening
-	log.Fatal(http.ListenAndServe(":8000", r))
+	//log.Fatal(http.ListenAndServe(":8000", r))
+
 }

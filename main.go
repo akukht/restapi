@@ -19,9 +19,8 @@ func main() {
 		cancel()
 	}()
 
-	if err := serve(ctx); err != nil {
+	if err := router.Router(ctx); err != nil {
 		log.Printf("failed to serve:+%v\n", err)
 	}
 
-	router.Router()
 }
