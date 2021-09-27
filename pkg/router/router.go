@@ -2,18 +2,24 @@ package router
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"restapi/pkg/controller"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 func Router(ctx context.Context) (err error) {
 
 	// Initialization mux router
 	r := mux.NewRouter()
+
+	// Prometheus Middleware
+	//r.Use(prometheusMiddleware)
+
+	// Prometheus endpoint
+	//r.Path("/prometheus").Handler(promhttp.Handler())
 
 	//Events requests
 	r.Handle("/api/events/filter", controller.IsAuthorized(controller.FilterEvents)).Methods("GET")
@@ -40,14 +46,15 @@ func Router(ctx context.Context) (err error) {
 
 	go func() {
 		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen:%+s\n", err)
+			//log.Fatalf("listen:%+s\n", err)
+			log.Fatal().Err(err).Msg("listen:%+s\n")
 		}
 	}()
 
-	log.Printf("server started")
+	log.Info().Msg("server started")
 	<-ctx.Done()
 
-	log.Printf("server stopped")
+	log.Info().Msg("server stopped")
 
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer func() {
@@ -55,19 +62,14 @@ func Router(ctx context.Context) (err error) {
 	}()
 
 	if err = srv.Shutdown(ctxShutDown); err != nil {
-		log.Fatalf("server Shutdown Failed:%+s", err)
+		log.Fatal().Err(err).Msg("server Shutdown Failed:%+s")
 	}
 
-	log.Printf("server exited properly")
-
+	log.Info().Msg("server exited properly")
 	if err == http.ErrServerClosed {
 		err = nil
 	}
 
 	return
-
-	//---------
-	//Port listening
-	//log.Fatal(http.ListenAndServe(":8000", r))
 
 }
