@@ -1,81 +1,133 @@
 package controller
 
 import (
-	// "net/http"
-	// "net/http/httptest"
-	// . "restapi/pkg/jwt"
-	// "restapi/pkg/model"
+	"net/http"
+	"net/http/httptest"
+	. "restapi/pkg/jwt"
+	"restapi/pkg/model"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetEvents(t *testing.T) {
-	assert.Equal(t, 200, 200)
-	/*
-		t.Run("Get user events by valid data", func(t *testing.T) {
+
+	GetUserEvents := []struct {
+		Name       string
+		StatusCode int
+		UserID     string
+	}{
+		{
+			Name:       "Get events from user with zero events",
+			StatusCode: 404,
+			UserID:     "2",
+		},
+		{
+			Name:       "Get user events by valid data",
+			StatusCode: 200,
+			UserID:     "1",
+		},
+	}
+	for _, tt := range GetUserEvents {
+		t.Run(tt.Name, func(t *testing.T) {
+
 			request, _ := http.NewRequest(http.MethodGet, "/api/events", nil)
 			token, _ := GenerateJWT()
-			model.UsersList["1"] = model.Users{
-				Login:    model.UsersList["1"].Login,
-				Password: model.UsersList["1"].Password,
+			model.UsersList[tt.UserID] = model.Users{
+				Login:    model.UsersList[tt.UserID].Login,
+				Password: model.UsersList[tt.UserID].Password,
 				Token:    token,
-				TimeZone: model.UsersList["1"].TimeZone,
+				TimeZone: model.UsersList[tt.UserID].TimeZone,
 			}
 			request.Header.Add("Token", token)
+
 			response := httptest.NewRecorder()
 			GetEvents(response, request)
-			assert.Equal(t, 200, response.Result().StatusCode)
+
+			assert.Equal(t, tt.StatusCode, response.Result().StatusCode)
 		})
-	*/
-	/*
-		t.Run("Get events from user without events", func(t *testing.T) {
-			request, _ := http.NewRequest(http.MethodGet, "/api/events", nil)
+	}
+
+	t.Run("Get events without token", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodGet, "/api/events", nil)
+		response := httptest.NewRecorder()
+		GetEvents(response, request)
+		assert.Equal(t, 401, response.Result().StatusCode)
+	})
+
+}
+
+func TestGetEvent(t *testing.T) {
+	GetUserEvent := []struct {
+		Name       string
+		StatusCode int
+		UserID     string
+		EventID    string
+	}{
+		{
+			Name:       "Get events from user with zero events",
+			StatusCode: 404,
+			UserID:     "2",
+			EventID:    "100",
+		},
+		{
+			Name:       "Get user events by valid data",
+			StatusCode: 200,
+			UserID:     "1",
+			EventID:    "1",
+		},
+	}
+
+	for _, tt := range GetUserEvent {
+		t.Run(tt.Name, func(t *testing.T) {
+			request, _ := http.NewRequest(http.MethodDelete, "/api/events/"+tt.EventID, nil)
+
 			token, _ := GenerateJWT()
-
-			model.UsersList["100"] = model.Users{
-				Login:    model.UsersList["100"].Login,
-				Password: model.UsersList["100"].Password,
-				Token:    token,
-				TimeZone: model.UsersList["100"].TimeZone,
-			}
-
 			request.Header.Add("Token", token)
 			response := httptest.NewRecorder()
-			GetEvents(response, request)
+			vars := map[string]string{
+				"id": tt.EventID,
+			}
+			request = mux.SetURLVars(request, vars)
+			GetEvent(response, request)
 
-			assert.Equal(t, 404, response.Result().StatusCode)
+			assert.Equal(t, tt.StatusCode, response.Result().StatusCode)
 		})
+	}
+}
 
-		t.Run("Get events without token", func(t *testing.T) {
-			request, _ := http.NewRequest(http.MethodGet, "/api/events", nil)
+func TestDeleteEvent(t *testing.T) {
+	RemoveEvents := []struct {
+		Name       string
+		StatusCode int
+		EventID    string
+	}{
+		{
+			Name:       "Event not found msg",
+			StatusCode: 404,
+			EventID:    "100",
+		},
+		{
+			Name:       "Event was deleted msg",
+			StatusCode: 200,
+			EventID:    "1",
+		},
+	}
+
+	for _, tt := range RemoveEvents {
+		t.Run(tt.Name, func(t *testing.T) {
+			request, _ := http.NewRequest(http.MethodDelete, "/api/events/"+tt.EventID, nil)
+
+			token, _ := GenerateJWT()
+			request.Header.Add("Token", token)
 			response := httptest.NewRecorder()
-			GetEvents(response, request)
-			assert.Equal(t, 401, response.Result().StatusCode)
+			vars := map[string]string{
+				"id": tt.EventID,
+			}
+			request = mux.SetURLVars(request, vars)
+			DeleteEvent(response, request)
+			assert.Equal(t, tt.StatusCode, response.Result().StatusCode)
 		})
-	*/
-
-	// t.Run("Get events with old token", func(t *testing.T) {
-	// 	//Create request
-	// 	request, _ := http.NewRequest(http.MethodGet, "/api/events", nil)
-
-	// 	//Set expired token
-	// 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2MzIzMTU5NDh9.8T0HLWHU4l9Ham1P7WkcwLO9Gk5GP_lqG3SICNHewTc"
-
-	// 	//Set token for user with ID-1
-	// 	UsersList["1"] = Users{
-	// 		Login:    UsersList["1"].Login,
-	// 		Password: UsersList["1"].Password,
-	// 		Token:    token,
-	// 		TimeZone: UsersList["1"].TimeZone,
-	// 	}
-
-	// 	//Set token to headers
-	// 	request.Header.Add("Token", token)
-
-	// 	response := httptest.NewRecorder()
-	// 	GetEvents(response, request)
-
-	// 	assert.Equal(t, 401, response.Result().StatusCode)
-	// })
+	}
 }

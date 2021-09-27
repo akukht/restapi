@@ -7,6 +7,7 @@ import (
 type ResponseCode struct {
 	StatusCode int    `json:"code"`
 	Message    string `json:"message"`
+	Token      string
 }
 
 type Date struct {

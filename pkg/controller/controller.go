@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	. "restapi/pkg/jwt"
@@ -12,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var mySigningKey = []byte("secret")
+//var mySigningKey = []byte("secret")
 
 const (
 	EventMessage404      = "Event not found"
@@ -51,9 +52,11 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 
 	if _, ok := model.EventsData[id["id"]]; ok {
 		delete(model.EventsData, id["id"])
+		w.WriteHeader(200)
 		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
 	} else {
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404 + "start" + id["id"] + "end"})
 	}
 
 }
@@ -75,11 +78,15 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 
 func CreateEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	var createEvent model.Events
 	_ = json.NewDecoder(r.Body).Decode(&createEvent)
 
+	fmt.Println(createEvent)
+
 	model.EventsData[strconv.Itoa(rand.Intn(1000000))] = createEvent
 	json.NewEncoder(w).Encode(model.EventsData)
+
 }
 
 func GetEvent(w http.ResponseWriter, r *http.Request) {
@@ -97,8 +104,10 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 
 	if _, ok := model.EventsData[id["id"]]; ok {
 		userEvent := model.GetUserEvent(userID, id["id"], model.EventsData)
+		w.WriteHeader(200)
 		json.NewEncoder(w).Encode(model.TimeZoneConverter(userID, model.UsersList[userID].TimeZone, userEvent))
 	} else {
+		w.WriteHeader(404)
 		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
@@ -133,7 +142,7 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage401})
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: EventMessage401})
 	}
 }
 
