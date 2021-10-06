@@ -2,19 +2,19 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
-	"math/rand"
 	"net/http"
-	. "restapi/pkg/jwt"
+	cjwt "restapi/pkg/jwt"
 	"restapi/pkg/model"
 	"strconv"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
 
-//var mySigningKey = []byte("secret")
+var validate *validator.Validate
 
+//Messages for responses
 const (
 	EventMessage404      = "Event not found"
 	EventMessage401      = "You need to authorize"
@@ -25,133 +25,225 @@ const (
 	LoggedOut            = "You are logged out"
 )
 
+//BetweenFilterEvents filte for star and enddate
 func BetweenFilterEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	urlParams := r.URL.Query()
-	event := model.BetweenFilterEvents(urlParams)
-	json.NewEncoder(w).Encode(event)
-}
 
-func WeekFilterEvents(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	urlParams := r.URL.Query()
-	event := model.WeekFilterEvents(urlParams)
-	json.NewEncoder(w).Encode(event)
-}
-
-func FilterEvents(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	urlParams := r.URL.Query()
-	event := model.FilterEvents(urlParams)
-	json.NewEncoder(w).Encode(event)
-}
-
-func DeleteEvent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	id := mux.Vars(r)
-
-	if _, ok := model.EventsData[id["id"]]; ok {
-		delete(model.EventsData, id["id"])
-		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
-	} else {
-		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404 + "start" + id["id"] + "end"})
-	}
-
-}
-
-func UpdateEvent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	id := mux.Vars(r)
-	var event model.Events
-	_ = json.NewDecoder(r.Body).Decode(&event)
-
-	if _, ok := model.EventsData[id["id"]]; ok {
-		model.EventsData[id["id"]] = event
-	} else {
-		err := model.ResponseCode{StatusCode: 404, Message: EventMessage404}
-		json.NewEncoder(w).Encode(err)
-	}
-	json.NewEncoder(w).Encode(model.EventsData)
-}
-
-func CreateEvent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var createEvent model.Events
-	_ = json.NewDecoder(r.Body).Decode(&createEvent)
-
-	fmt.Println(createEvent)
-
-	model.EventsData[strconv.Itoa(rand.Intn(1000000))] = createEvent
-	json.NewEncoder(w).Encode(model.EventsData)
-
-}
-
-func GetEvent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	id := mux.Vars(r)
-
-	token, err := GetGWTToken(r.Header["Token"][0])
+	//Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
 	if err != nil {
 		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
 	}
-	userID, err := model.GetUserIDbyToken(token.Raw)
+
+	event, err := model.BetweenFilterEvents(token.Raw, urlParams)
+
 	if err != nil {
-		log.Warn().Err(err).Msg("Get events, GetUserIDbyToken action in GetEvent() function")
+		log.Warn().Err(err).Msg("Get events by filter")
 	}
 
-	if _, ok := model.EventsData[id["id"]]; ok {
-		userEvent := model.GetUserEvent(userID, id["id"], model.EventsData)
+	json.NewEncoder(w).Encode(event)
+}
+
+//FilterEvents simple filter
+func FilterEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	//Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
+
+	urlParams := r.URL.Query()
+	event, err := model.BasicFilter(token.Raw, urlParams)
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Get event by filter")
+		return
+	}
+	if len(event) != 0 {
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(model.TimeZoneConverter(userID, model.UsersList[userID].TimeZone, userEvent))
+		json.NewEncoder(w).Encode(event)
 	} else {
 		w.WriteHeader(404)
 		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
 
-func GetEvents(w http.ResponseWriter, r *http.Request) {
+//DeleteEvent delete event
+func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if r.Header["Token"] != nil {
-		token, err := GetGWTToken(r.Header["Token"][0])
+	id := mux.Vars(r)
 
-		if err != nil {
-			log.Warn().Err(err).Msg("Get events request, GetGWTToken action in GetEvents() function")
-		}
+	//Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
 
-		userID, err := model.GetUserIDbyToken(token.Raw)
+	eventID, err := strconv.Atoi(id["id"])
+	if err != nil {
+		w.WriteHeader(400)
+		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+	}
 
-		if err != nil {
-			log.Warn().Err(err).Msg("Get events request, GetUserIDbyToken action in GetEvents() function")
-		}
+	err = model.DeleteEvent(token.Raw, eventID)
 
-		userEvent, err := model.GetUserEvents(userID, model.EventsData)
+	if err != nil {
+		log.Warn().Err(err).Msg("Delete event")
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		return
+	}
 
-		if err != nil {
-			log.Warn().Err(err).Msg("Get events request, GetUserEvents action in GetEvents() function")
-		}
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
+}
 
-		if len(userEvent) != 0 {
-			w.WriteHeader(200)
-			json.NewEncoder(w).Encode(model.TimeZoneConverter(userID, model.UsersList[userID].TimeZone, userEvent))
-		} else {
-			w.WriteHeader(404)
-			json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
-		}
+//UpdateEvent for update event
+func UpdateEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	id := mux.Vars(r)
+
+	validate = validator.New()
+	var event model.Events
+	_ = json.NewDecoder(r.Body).Decode(&event)
+
+	//Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
+
+	err = validate.Struct(event)
+	if err != nil {
+		log.Warn().Err(err).Msg("Update event, validate failed")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
+		return
+	}
+
+	eventID, err := strconv.Atoi(id["id"])
+	if err != nil {
+		w.WriteHeader(400)
+		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+	}
+
+	_, err = model.UpdateEvent(token.Raw, event, eventID)
+
+	if err != nil {
+		w.WriteHeader(400)
+		log.Warn().Err(err).Msg("Update event")
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+	}
+
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was updated"})
+
+}
+
+//CreateEvent create event
+func CreateEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	validate = validator.New()
+	//Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
+
+	var createEvent model.Events
+	_ = json.NewDecoder(r.Body).Decode(&createEvent)
+
+	err = validate.Struct(createEvent)
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Create event, validate failed")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
+		return
+	}
+
+	_, err = model.CreateNewEvent(createEvent, token.Raw)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to create new event")
+	}
+
+	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was created"})
+
+}
+
+//GetEvent get user event
+func GetEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := mux.Vars(r)
+
+	eventID, err := strconv.Atoi(id["id"])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: "The passed parameter is not a number"})
+	}
+
+	// Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events, GetGWTToken action in GetEvent() function")
+	}
+
+	// Get user event from database
+	userEvent, err := model.GetUserEventDB(token.Raw, eventID)
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events request, GetUserEvents action in GetEvents() function")
+	}
+
+	// Return JSON answer
+	if len(userEvent) != 0 {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(userEvent)
 	} else {
-		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: EventMessage401})
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
 
+//GetEvents get user events
+func GetEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events request, GetGWTToken action in GetEvents() function")
+	}
+
+	// Get user events from database
+	userEvent, err := model.GetUserEventsDB(token.Raw)
+	if err != nil {
+		log.Warn().Err(err).Msg("Get events request, GetUserEvents action in GetEvents() function")
+	}
+
+	// Return JSON answer
+	if len(userEvent) != 0 {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(userEvent)
+	} else {
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+	}
+}
+
+//IsAuthorized check if user authorized
 func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Header["Token"] != nil {
-			token, err := GetGWTToken(r.Header["Token"][0])
+			token, err := cjwt.GetGWTToken(r.Header["Token"][0])
 			if err != nil {
 				w.WriteHeader(401)
 				json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: OldToken})
@@ -166,10 +258,12 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 	})
 }
 
+//UpdateUser update user
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	token, err := GetGWTToken(r.Header["Token"][0])
 
+	// Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
 	if err != nil {
 		log.Warn().Err(err).Msg("Update user request, GetGWTToken action in UpdateUser() function")
 	}
@@ -192,7 +286,9 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(model.UsersList[id])
 }
 
+//Login for login user
 func Login(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Content-Type", "application/json")
 
 	var user model.Users
@@ -206,30 +302,32 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: token})
+	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Success", Token: token})
+
 }
 
+//Logout for logout user
 func Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("authorized", "false")
 
-	token, err := GetGWTToken(r.Header["Token"][0])
-
+	// Get token from Headers
+	token, err := cjwt.GetGWTToken(r.Header["Token"][0])
 	if err != nil {
 		log.Warn().Err(err).Msg("Loguot action after GetGWTToken() function")
 	}
 
-	userID, err := model.GetUserIDbyToken(token.Raw)
+	res, err := model.UserLogout(token.Raw)
 	if err != nil {
-		log.Warn().Err(err).Msg("Loguot action after GetUserIDbyToken() function")
+		log.Warn().Err(err).Msg("Loguot action after UserLogout() function")
+	}
+	//Return JSON answer
+	if res {
+		response := model.ResponseCode{StatusCode: 200, Message: LoggedOut}
+		json.NewEncoder(w).Encode(response)
+	} else {
+		response := model.ResponseCode{StatusCode: 401, Message: "Something went wrong"}
+		json.NewEncoder(w).Encode(response)
 	}
 
-	model.UsersList[userID] = model.Users{
-		Login:    model.UsersList[userID].Login,
-		Password: model.UsersList[userID].Password,
-		TimeZone: model.UsersList[userID].TimeZone,
-	}
-
-	response := model.ResponseCode{StatusCode: 200, Message: LoggedOut}
-	json.NewEncoder(w).Encode(response)
 }

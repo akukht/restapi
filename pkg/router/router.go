@@ -15,14 +15,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-//-----------
-
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
 }
 
-func NewResponseWriter(w http.ResponseWriter) *responseWriter {
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{w, http.StatusOK}
 }
 
@@ -58,7 +56,7 @@ func prometheusMiddleware(next http.Handler) http.Handler {
 		path, _ := route.GetPathTemplate()
 
 		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
-		rw := NewResponseWriter(w)
+		rw := newResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
 		statusCode := rw.statusCode
@@ -91,8 +89,7 @@ func init() {
 	prometheus.MustRegister(cpuTemp)
 }
 
-//------
-
+//Router for all requests
 func Router(ctx context.Context) (err error) {
 
 	cpuTemp.Set(65.3)
@@ -109,7 +106,6 @@ func Router(ctx context.Context) (err error) {
 
 	//Events requests
 	r.Handle("/api/events/filter", controller.IsAuthorized(controller.FilterEvents)).Methods("GET")
-	r.Handle("/api/events/filter/week", controller.IsAuthorized(controller.WeekFilterEvents)).Methods("GET")
 	r.Handle("/api/events/filter/between", controller.IsAuthorized(controller.BetweenFilterEvents)).Methods("GET")
 	r.Handle("/api/events", controller.IsAuthorized(controller.GetEvents)).Methods("GET")
 	r.Handle("/api/events/{id}", controller.IsAuthorized(controller.GetEvent)).Methods("GET")
@@ -124,9 +120,8 @@ func Router(ctx context.Context) (err error) {
 	r.HandleFunc("/api/login", controller.Login).Methods("POST")
 	r.Handle("/api/logout", controller.IsAuthorized(controller.Logout)).Methods("POST")
 
-	//--------
 	srv := &http.Server{
-		Addr:    ":9000",
+		Addr:    ":9009",
 		Handler: r,
 	}
 

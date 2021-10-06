@@ -1,6 +1,17 @@
 version: '3.1'
 
 services:
+  database:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+          POSTGRES_DB: rainbow_database
+          POSTGRES_UESR: unicorn_user
+          POSTGRES_PASSWORD: magical_password
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d/
+      - database-data:/var/lib/postgresql/data/
   grafana:
     image: grafana/grafana:latest
     container_name: grafana_restapi
@@ -31,5 +42,6 @@ services:
     restart: always
 
 volumes:
+  database-data:
   grafana-storage:
   prometheus_data:

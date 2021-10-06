@@ -2,60 +2,13 @@ package model
 
 import (
 	"errors"
-	"net/url"
-	hash "restapi/pkg/hashing"
-	. "restapi/pkg/jwt"
+
+	//	. "restapi/pkg/jwt"
 	"strconv"
-	"strings"
 	"time"
 )
 
-func BetweenFilterEvents(urlParams url.Values) map[string]Events {
-	var day int
-
-	startNum, _ := strconv.Atoi(strings.Join(urlParams["start"], ""))
-	endNum, _ := strconv.Atoi(strings.Join(urlParams["end"], ""))
-
-	var event = map[string]Events{}
-	for id, val := range EventsData {
-		day, _ = strconv.Atoi(val.Time.Day)
-
-		if day >= startNum && day <= endNum && val.Time.Month == strings.Join(urlParams["month"], "") && val.Time.Year == strings.Join(urlParams["year"], "") {
-			event[id] = EventsData[id]
-		}
-	}
-
-	return event
-}
-
-func WeekFilterEvents(urlParams url.Values) map[string]Events {
-	weekNum, _ := strconv.Atoi(strings.Join(urlParams["week"], ""))
-
-	weekNum = weekNum * 7
-	var day int
-	var event = map[string]Events{}
-	for id, val := range EventsData {
-		day, _ = strconv.Atoi(val.Time.Day)
-
-		if day < weekNum && val.Time.Month == strings.Join(urlParams["month"], "") && val.Time.Year == strings.Join(urlParams["year"], "") {
-			event[id] = EventsData[id]
-		}
-	}
-
-	return event
-}
-
-func FilterEvents(urlParams url.Values) map[string]Events {
-	var event = map[string]Events{}
-	for id, val := range EventsData {
-		if val.Time.Day == strings.Join(urlParams["day"], "") && val.Time.Month == strings.Join(urlParams["month"], "") && val.Time.Year == strings.Join(urlParams["year"], "") {
-			event[id] = EventsData[id]
-		}
-	}
-
-	return event
-}
-
+//Authorization return token after successed authorization
 func Authorization(login, password string) (string, error) {
 
 	var token string
@@ -64,34 +17,15 @@ func Authorization(login, password string) (string, error) {
 		return "", errors.New("empty login or password")
 	}
 
-	for i, v := range UsersList {
-		if v.Login == login {
+	token = AuthUserDB(login, password)
 
-			if hash.CheckPasswordHash(password, v.Password) {
-				token, _ = GenerateJWT()
-
-				UsersList[i] = Users{
-					Login:    UsersList[i].Login,
-					Password: UsersList[i].Password,
-					Token:    token,
-					TimeZone: UsersList[i].TimeZone,
-				}
-
-				break
-			}
-		}
-	}
-
-	if token != "" {
-		return token, nil
-	} else {
+	if token == "" {
 		return "", errors.New("wrong login or password")
 	}
-
+	return token, nil
 }
 
-//------------helper
-
+//GetUserIDbyToken get user id by token (in struct)
 func GetUserIDbyToken(token string) (string, error) {
 
 	var userID string
@@ -102,13 +36,14 @@ func GetUserIDbyToken(token string) (string, error) {
 			return userID, nil
 		}
 	}
-	return userID, errors.New("User id not found")
+	return userID, errors.New("user id not found")
 }
 
-func GetUserEvents(userID string, events map[string]Events) (map[string]Events, error) {
+//GetUserEvents get user event in struct
+func GetUserEvents(userID int, events map[string]Events) (map[string]Events, error) {
 
 	var userEvent = map[string]Events{}
-	if userID != "" {
+	if userID != 0 {
 		for i, v := range events {
 			if v.UserID == userID {
 				userEvent[i] = events[i]
@@ -116,10 +51,11 @@ func GetUserEvents(userID string, events map[string]Events) (map[string]Events, 
 		}
 		return userEvent, nil
 	}
-	return userEvent, errors.New("Empty user id")
+	return userEvent, errors.New("empty user id")
 }
 
-func GetUserEvent(userID string, eventID string, events map[string]Events) map[string]Events {
+//GetUserEvent get user event in struct
+func GetUserEvent(userID int, eventID string, events map[string]Events) map[string]Events {
 
 	var userEvent = map[string]Events{}
 
@@ -132,7 +68,8 @@ func GetUserEvent(userID string, eventID string, events map[string]Events) map[s
 	return userEvent
 }
 
-func TimeZoneConverter(userID string, userTimezone string, events map[string]Events) map[string]Events {
+//TimeZoneConverter converter time zones
+func TimeZoneConverter(userID int, userTimezone string, events map[string]Events) map[string]Events {
 	var userEvent = map[string]Events{}
 
 	for i, v := range events {
@@ -150,6 +87,7 @@ func TimeZoneConverter(userID string, userTimezone string, events map[string]Eve
 		converted := t.In(phx)
 
 		userEvent[i] = Events{
+			ID:   v.ID,
 			Name: v.Name,
 			Time: Date{
 				Year:    v.Time.Year,
