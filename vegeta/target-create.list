@@ -1,0 +1,4 @@
+POST http://localhost:9009/api/events
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2MzQzNzk5OTZ9.HnQrZJi1miVMQbgititlywZBvXDbGaAnF7xnEB2lrlg
+Content-Type: application/json
+@./vegeta/newevent.json

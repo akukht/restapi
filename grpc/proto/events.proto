@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package api;
+
+service Event {
+    rpc GetEvent(GetEventRequest) returns (GetEventResponse){}
+    rpc Auth(AuthRequest) returns (AuthResponse){}
+}
+
+message GetEventRequest {
+    int32 x = 1;
+}
+message GetEventResponse {
+    string result = 1;
+}
+
+message AuthRequest {
+    string login = 1;
+    string password = 2;
+}
+message AuthResponse {
+    string token = 1;
+}

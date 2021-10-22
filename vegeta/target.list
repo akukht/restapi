@@ -1,0 +1,5 @@
+GET http://localhost:9009/api/events
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2MzQzNjYxNzR9.QsT1HD1fwdI95ncw1lNS90Ox6lvCSldBssVELBNg5wM
+
+GET http://localhost:9009/api/events/1
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2MzQzNjYxNzR9.QsT1HD1fwdI95ncw1lNS90Ox6lvCSldBssVELBNg5wM

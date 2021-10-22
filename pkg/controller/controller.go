@@ -42,7 +42,11 @@ func BetweenFilterEvents(w http.ResponseWriter, r *http.Request) {
 		log.Warn().Err(err).Msg("Get events by filter")
 	}
 
-	json.NewEncoder(w).Encode(event)
+	err = json.NewEncoder(w).Encode(event)
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Return BetweenFilterEvents JSON")
+	}
 }
 
 //FilterEvents simple filter
@@ -64,10 +68,12 @@ func FilterEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(event) != 0 {
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(event)
+		err = json.NewEncoder(w).Encode(event)
+		log.Warn().Err(err).Msg("Return JSON response (FilterEvents)")
 	} else {
 		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		log.Warn().Err(err).Msg("Return JSON response (FilterEvents)")
 	}
 }
 
@@ -86,7 +92,10 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(400)
 		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		if err != nil {
+			log.Warn().Err(err).Msg("Return JSON response (DeleteEvent) 'The passed parameter is not a number' ")
+		}
 	}
 
 	err = model.DeleteEvent(token.Raw, eventID)
@@ -94,12 +103,18 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn().Err(err).Msg("Delete event")
 		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		if err != nil {
+			log.Warn().Err(err).Msg("Return JSON response (DeleteEvent) 'Event not found'")
+		}
 		return
 	}
 
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
+	err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: EventDeleteMessag200})
+	if err != nil {
+		log.Warn().Err(err).Msg("Return JSON response (DeleteEvent) 'Event was deleted' ")
+	}
 }
 
 //UpdateEvent for update event
@@ -122,7 +137,10 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn().Err(err).Msg("Update event, validate failed")
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
+		if err != nil {
+			log.Warn().Err(err).Msg("Update event, validate failed")
+		}
 		return
 	}
 
@@ -130,7 +148,10 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(400)
 		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		if err != nil {
+			log.Warn().Err(err).Msg("The passed parameter is not a number UpdateEvent() function")
+		}
 	}
 
 	_, err = model.UpdateEvent(token.Raw, event, eventID)
@@ -138,11 +159,17 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(400)
 		log.Warn().Err(err).Msg("Update event")
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "The passed parameter is not a number"})
+		if err != nil {
+			log.Warn().Err(err).Msg("The passed parameter is not a number UpdateEvent() function")
+		}
 	}
 
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was updated"})
+	err = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was updated"})
+	if err != nil {
+		log.Warn().Err(err).Msg("Event was updated")
+	}
 
 }
 
@@ -165,7 +192,7 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn().Err(err).Msg("Create event, validate failed")
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
+		_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 400, Message: "Invalid data submitted"})
 		return
 	}
 
@@ -174,7 +201,7 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 		log.Warn().Err(err).Msg("Failed to create new event")
 	}
 
-	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was created"})
+	_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Event was created"})
 
 }
 
@@ -186,7 +213,7 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := strconv.Atoi(id["id"])
 	if err != nil {
 		log.Warn().Err(err).Msg("Get event, convert parameter to integer in GetEvent() function")
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: "The passed parameter is not a number"})
+		_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: "The passed parameter is not a number"})
 	}
 
 	// Get token from Headers
@@ -204,10 +231,10 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 	// Return JSON answer
 	if len(userEvent) != 0 {
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(userEvent)
+		_ = json.NewEncoder(w).Encode(userEvent)
 	} else {
 		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
 
@@ -230,10 +257,10 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
 	// Return JSON answer
 	if len(userEvent) != 0 {
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(userEvent)
+		_ = json.NewEncoder(w).Encode(userEvent)
 	} else {
 		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
+		_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 404, Message: EventMessage404})
 	}
 }
 
@@ -246,14 +273,14 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 			token, err := cjwt.GetGWTToken(r.Header["Token"][0])
 			if err != nil {
 				w.WriteHeader(401)
-				json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: OldToken})
+				_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: OldToken})
 			}
 			if token.Valid {
 				endpoint(w, r)
 			}
 		} else {
 			w.WriteHeader(401)
-			json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: NeenAuth401})
+			_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: NeenAuth401})
 		}
 	})
 }
@@ -283,7 +310,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Token:    model.UsersList[id].Token,
 	}
 
-	json.NewEncoder(w).Encode(model.UsersList[id])
+	_ = json.NewEncoder(w).Encode(model.UsersList[id])
 }
 
 //Login for login user
@@ -298,11 +325,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Error().Err(err).Msg("After authorization in login() function")
-		json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: err.Error()})
+		_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 401, Message: err.Error()})
 		return
 	}
 
-	json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Success", Token: token})
+	_ = json.NewEncoder(w).Encode(model.ResponseCode{StatusCode: 200, Message: "Success", Token: token})
 
 }
 
@@ -324,10 +351,10 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	//Return JSON answer
 	if res {
 		response := model.ResponseCode{StatusCode: 200, Message: LoggedOut}
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	} else {
 		response := model.ResponseCode{StatusCode: 401, Message: "Something went wrong"}
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}
 
 }

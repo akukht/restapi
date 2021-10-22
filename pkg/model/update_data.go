@@ -51,7 +51,7 @@ func UpdateEvent(token string, event Events, id int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = db.Exec("UPDATE date_lists SET year = $2, month = $3, day = $4, hour = $5, minutes = $6 WHERE id = $1", id, event.Time.Year, event.Time.Month, event.Time.Day, event.Time.Hour, event.Time.Minutes)
+	_, err = db.Exec("UPDATE date_lists SET year = $2, month = $3, day = $4, hour = $5, minutes = $6 WHERE event_id = $1", id, event.Time.Year, event.Time.Month, event.Time.Day, event.Time.Hour, event.Time.Minutes)
 	if err != nil {
 		return false, err
 	}

@@ -83,10 +83,26 @@ var (
 )
 
 func init() {
-	prometheus.Register(totalRequests)
-	prometheus.Register(responseStatus)
-	prometheus.Register(httpDuration)
-	prometheus.MustRegister(cpuTemp)
+	err := prometheus.Register(totalRequests)
+	if err != nil {
+		log.Warn().Err(err).Msg("Init Register Prometheus(totalRequests)")
+	}
+
+	err = prometheus.Register(responseStatus)
+	if err != nil {
+		log.Warn().Err(err).Msg("Init Register Prometheus(responseStatus)")
+	}
+
+	err = prometheus.Register(httpDuration)
+	if err != nil {
+		log.Warn().Err(err).Msg("Init Register Prometheus(httpDuration)")
+	}
+
+	err = prometheus.Register(cpuTemp)
+
+	if err != nil {
+		log.Warn().Err(err).Msg("Init Register Prometheus(cpuTemp)")
+	}
 }
 
 //Router for all requests

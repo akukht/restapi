@@ -32,7 +32,7 @@ func ConnectDB() (*sql.DB, error) {
 
 	err = db.Ping()
 	if err != nil {
-		return nil, errors.New("error DB ping TEST")
+		return nil, errors.New("error DB ping")
 	}
 
 	return db, nil
