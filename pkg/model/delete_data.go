@@ -1,43 +1,25 @@
 package model
 
 import (
-	"restapi/pkg/database"
+	"context"
 
-	"github.com/rs/zerolog/log"
+	_ "github.com/lib/pq"
 )
 
-//DeleteEvent delete event
-func DeleteEvent(token string, id int) error {
+const (
+	deleteEvent    = `DELETE FROM events WHERE id = $1`
+	checkUserEvent = `SELECT event_id FROM users_events WHERE event_id = $1 AND user_id = $2`
+)
 
-	// Connect tu database
-	db, err := database.ConnectDB()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Connection to DB")
-	}
-
-	// Get user id by token
-	row := db.QueryRow("SELECT id FROM users WHERE token = $1", token)
-	var userID int
-	err = row.Scan(&userID)
-	if err != nil {
-		return err
-	}
-
-	// Check if event have in current user
-	UserEvent := db.QueryRow("SELECT event_id FROM users_events WHERE event_id = $1 AND user_id = $2", id, userID)
+func (q *Queries) DeleteEvent(ctx context.Context, eventID int, userID int) error {
+	row := q.db.QueryRowContext(ctx, checkUserEvent, eventID, userID)
 	var checkEvent int
-	err = UserEvent.Scan(&checkEvent)
+	err := row.Scan(&checkEvent)
+
 	if err != nil {
 		return err
 	}
+	_, err = q.db.ExecContext(ctx, deleteEvent, eventID)
 
-	sqlStatement := `
-		DELETE FROM events
-		WHERE id = $1;`
-	_, err = db.Exec(sqlStatement, id)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

@@ -47,6 +47,7 @@ func UpdateEvent(token string, event Events, id int) (bool, error) {
 		log.Warn().Err(err).Msg("Check if event exist")
 		return false, err
 	}
+
 	_, err = db.Exec("UPDATE events SET name = $2, description = $3, timezone = $4 WHERE id = $1", id, event.Name, event.Desc, event.TimeZone)
 	if err != nil {
 		return false, err

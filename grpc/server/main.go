@@ -7,7 +7,6 @@ import (
 	"net"
 	event "restapi/grpc/events"
 	api "restapi/grpc/proto"
-	"restapi/pkg/jwt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -26,10 +25,10 @@ func unaryInterceptor(
 	}
 
 	//Get token from Headers
-	_, err := jwt.GetGWTToken(string(string(md["token"][0])))
-	if err != nil {
-		return nil, errors.New("token was expired")
-	}
+	// _, err := jwt.GetGWTToken(string(string(md["token"][0])))
+	// if err != nil {
+	// 	return nil, errors.New("token was expired")
+	// }
 
 	return handler(ctx, req)
 }

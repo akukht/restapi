@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"restapi/pkg/database"
 	cjwt "restapi/pkg/jwt"
 	"restapi/pkg/model"
 	"strconv"
@@ -11,6 +13,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
+
+var Queries *model.Queries
+
+func init() {
+	db, _ := database.ConnectDB()
+	Queries = model.New(db)
+}
 
 var validate *validator.Validate
 
@@ -98,7 +107,11 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = model.DeleteEvent(token.Raw, eventID)
+	userID, err := Queries.GetUserIDbyToken(context.Background(), token.Raw)
+	if err != nil {
+		log.Warn().Err(err).Msg("Get user ID by Token (Delete event action)")
+	}
+	err = Queries.DeleteEvent(context.Background(), eventID, userID)
 
 	if err != nil {
 		log.Warn().Err(err).Msg("Delete event")

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"restapi/pkg/database"
@@ -9,6 +10,19 @@ import (
 
 	"github.com/rs/zerolog/log"
 )
+
+const getUserID = `SELECT id FROM users WHERE token = $1`
+
+//GetUserIDbyToken get user id by token
+func (q *Queries) GetUserIDbyToken(ctx context.Context, token string) (int, error) {
+	row := q.db.QueryRowContext(ctx, getUserID, token)
+	var userID int
+	err := row.Scan(&userID)
+	if err != nil {
+		return 0, err
+	}
+	return userID, nil
+}
 
 //BetweenFilterEvents get events after filtering
 func BetweenFilterEvents(token string, urlParams url.Values) (map[string]Events, error) {

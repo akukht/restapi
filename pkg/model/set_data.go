@@ -12,6 +12,7 @@ func CreateNewEvent(event Events, token string) (bool, error) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Connection to DB")
 	}
+	
 	// Get user id by token
 	row := db.QueryRow("SELECT id FROM users WHERE token = $1", token)
 	var userID int

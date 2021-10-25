@@ -11,3 +11,7 @@ vegeta-create:
 	
 lint:
 	golangci-lint run
+
+testdb:
+	docker exec -it restapi_database_1 createdb --username=unicorn_user --owner=unicorn_user test_events
+	migrate -path ./schema_test -database 'postgres://unicorn_user:magical_password@localhost:5432/test_events?sslmode=disable' up	
